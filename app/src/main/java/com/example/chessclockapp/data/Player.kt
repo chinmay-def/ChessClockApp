@@ -4,5 +4,4 @@ data class Player(
     val id :Int,
     val timeLeft :Float,
     val isActive :Boolean = false
-
 )

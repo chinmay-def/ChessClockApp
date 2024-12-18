@@ -1,7 +1,5 @@
 package com.example.chessclockapp
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +24,13 @@ class ChessClockViewModel : ViewModel() {
 
     private var timer: Job? = null
 
+    private val _timeSettings = MutableStateFlow(
+        TimeControlSettings(
+            selectedControl = defaultTimeControls.first(),
+            predefinedControls = defaultTimeControls
+        )
+    )
+    val timeSettings = _timeSettings.asStateFlow()
 
     fun handleEvent(event: GameEvent) {
         when (event) {
@@ -39,19 +44,27 @@ class ChessClockViewModel : ViewModel() {
 
     private fun switchPlayer(playerId: Int) {
         timer?.cancel()
+        val increment = _timeSettings.value.selectedControl.incrementSeconds
         val currentState = _gameState.value
+        val updatedState = when (playerId) {
+            2 -> currentState.copy(player2 = currentState.player2.copy(timeLeft = currentState.player2.timeLeft + increment))
+            1 -> currentState.copy(player1 = currentState.player1.copy(timeLeft = currentState.player1.timeLeft + increment))
+            else -> currentState
 
+        }
         val newState = when (playerId) {
             1 -> currentState.copy(
-                player1 = currentState.player1.copy(isActive = false),
-                player2 = currentState.player2.copy(isActive = true),
+                player1 = updatedState.player1.copy(isActive = false),
+                player2 = updatedState.player2.copy(isActive = true),
                 gameStatus = GameStatus.IN_PROGRESS
             )
+
             2 -> currentState.copy(
-                player1 = currentState.player1.copy(isActive = true),
-                player2 = currentState.player2.copy(isActive = false),
+                player1 = updatedState.player1.copy(isActive = true),
+                player2 = updatedState.player2.copy(isActive = false),
                 gameStatus = GameStatus.IN_PROGRESS
             )
+
             else -> currentState
         }
 
@@ -92,9 +105,11 @@ class ChessClockViewModel : ViewModel() {
             1 -> currentState.copy(
                 player1 = currentState.player1.copy(timeLeft = newTime)
             )
+
             2 -> currentState.copy(
                 player2 = currentState.player2.copy(timeLeft = newTime)
             )
+
             else -> currentState
         }
     }
@@ -116,14 +131,6 @@ class ChessClockViewModel : ViewModel() {
     }
 
 
-    private val _timeSettings = MutableStateFlow(
-        TimeControlSettings(
-            selectedControl = defaultTimeControls.first(),
-            predefinedControls = defaultTimeControls
-        )
-    )
-    val timeSettings = _timeSettings.asStateFlow()
-
     companion object {
         val defaultTimeControls = listOf(
             TimeControl("Bullet", 1),
@@ -139,10 +146,12 @@ class ChessClockViewModel : ViewModel() {
 
     fun updateTimeControl(timeControl: TimeControl) {
         viewModelScope.launch {
-            _timeSettings.update { it.copy(
-                selectedControl = timeControl,
-                isCustom = false
-            )}
+            _timeSettings.update {
+                it.copy(
+                    selectedControl = timeControl,
+                    isCustom = false
+                )
+            }
             resetGame()
         }
     }
@@ -155,14 +164,16 @@ class ChessClockViewModel : ViewModel() {
                 incrementSeconds = increment,
                 delaySeconds = delay
             )
-            _timeSettings.update { it.copy(
-                selectedControl = customControl,
-                isCustom = true
-            )}
+            _timeSettings.update {
+                it.copy(
+                    selectedControl = customControl,
+                    isCustom = true
+                )
+            }
             resetGame()
         }
     }
-
+// Reset the game
     private fun resetGame() {
         val selectedControl = _timeSettings.value.selectedControl
         val initialTimeInSeconds = selectedControl.initialTimeMinutes * 60f
